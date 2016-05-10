@@ -1,0 +1,18 @@
+#!/usr/bin/env perl
+
+use 5.020;
+use warnings;
+
+sub main {
+     die "Err: to few arguents" if ($#ARGV < 1);
+
+     given ($ARGV[0]) {
+          when ("-f") {
+               say "$ARGV[1]";
+          }
+
+          default { die "Err: bad use of arguments, see -h for help"; }
+     }
+}
+
+&main if (__FILE__ eq $0);
