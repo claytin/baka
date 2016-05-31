@@ -3,11 +3,12 @@
 use 5.020;
 use warnings;
 
-# see perl doc for info on Getopt::Long configuration
-use Getopt::Long qw(:config no_ignore_case bundling);
-#
-## globals
-use constant TMPDIR => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp";
+use Getopt::Long qw(:config no_ignore_case bundling); # see perldoc.perl.org
+use File::Basename;
+
+use constant { TMPDIR      => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp"
+             , BAKADIR     => "/baka"
+             , BAKA_SUFFIX => ".baka" };
 
 sub help {
      say "We will get there.";
@@ -17,9 +18,12 @@ sub help {
 
 # change function name
 sub extract {
-     my ($source, $target) = @_;
+     my $source = $_[0];
 
-     # check if file exists
+     unless (-e $source) {
+          say "Could'nt find sorce file. Aborting.";
+          exit(1);
+     }
 
      chomp(my $valid_baka = `tar -tf $source 2>/dev/null | wc -l`);
 
@@ -29,15 +33,27 @@ sub extract {
           exit(1);
      }
 
-     `tar -xpzf $source -C $target`;
+     unless (-e "${\TMPDIR}${\BAKADIR}") { # baka dir doesn't exist
+          `mkdir ${\TMPDIR}${\BAKADIR}`;
+     }
+
+     `tar -xpzf $source -C ${\TMPDIR}${\BAKADIR}`;
+}
+
+# recieves target path, and head of the tmp path
+# returns a list of the newer files in the tmp path
+sub get_newer_files {
+     my @nf;
 }
 
 # creates a new backup (target) file for source dir
 sub new_bak_file {
-     my ($source, $target) = @_;
+     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
+     my $target = $_[1];
 
+     say "$path$basename$suffix";
      ## check files
-     unless (-e $source) {
+     unless (-e "$path$basename$suffix") {
           say "Could'nt find sorce file. Aborting.";
           exit(1);
      }
@@ -47,8 +63,8 @@ sub new_bak_file {
           chomp(my $ans = <STDIN>);
 
           given ($ans) {
-               when (/^$|[nN]/) { say "Leaving."; exit(0)     }
-               when (/[yY]/)    { say "Overwriting..."; break }
+               when (/^$|[Nn]/) { say "Leaving."; exit(0)     }
+               when (/[Yy]/)    { say "Overwriting..."; break }
 
                default {
                     say "Unexpected answer. Aborting.";
@@ -58,7 +74,8 @@ sub new_bak_file {
      }
      ## end
 
-     `tar -czf $target $source 2>/dev/null`;
+     my $CWD = $path;
+     `tar -cpzf $target/$basename${\BAKA_SUFFIX} $basename$suffix 2>/dev/null`;
 }
 
 sub main {
@@ -67,7 +84,7 @@ sub main {
      # info about the meaning of the arguments can be found at sub help
      GetOptions(\%options,
                 'help',
-                'c',
+                'c', 'b',
                 's=s', 'source=s',
                 't=s', 'target=s'
      ) or do {
@@ -77,9 +94,13 @@ sub main {
 
      &help if (defined $options{'help'});
 
-     # say $options{'c'}, " ", $options{'s'}, " ", $options{'t'};
+     if (defined $options{c}) {
+          &new_bak_file($options{'s'}, $options{'t'});
+     }
 
-     &new_bak_file($options{'s'}, $options{'t'}) if ($options{'c'});
+     if (defined $options{b}) {
+          &extract($options{s});
+     }
 }
 
 &main if (__FILE__ eq $0);
