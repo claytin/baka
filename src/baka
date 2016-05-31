@@ -5,11 +5,31 @@ use warnings;
 
 # see perl doc for info on Getopt::Long configuration
 use Getopt::Long qw(:config no_ignore_case bundling);
+#
+## globals
+use constant TMPDIR => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp";
 
 sub help {
      say "We will get there.";
 
      exit(0);
+}
+
+# change function name
+sub extract {
+     my ($source, $target) = @_;
+
+     # check if file exists
+
+     chomp(my $valid_baka = `tar -tf $source 2>/dev/null | wc -l`);
+
+     if (! $valid_baka) { # check if source is a valid tar.gz archive, and if
+                          # there are any content in it
+          say "File '$valid_baka' is not a valid baka file. Aborting.";
+          exit(1);
+     }
+
+     `tar -xpzf $source -C $target`;
 }
 
 # creates a new backup (target) file for source dir
