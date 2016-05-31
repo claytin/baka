@@ -3,17 +3,74 @@
 use 5.020;
 use warnings;
 
-use Getopt::Long;
+# see perl doc for info on Getopt::Long configuration
+use Getopt::Long qw(:config no_ignore_case bundling);
+
+sub help {
+     say "We will get there.";
+
+     exit(0);
+}
+
+# creates a new backup (target) file for source dir
+sub new_bak_file {
+     my ($source, $target) = @_;
+
+     ## check files
+     unless (-e $source) {
+          say "Could'nt find sorce file. Aborting.";
+          exit(1);
+     }
+
+     if (-e $target) {
+          print "Bak file already exists, overwrite it? [y/N]: ";
+          chomp(my $ans = <STDIN>);
+
+          given ($ans) {
+               when (/^$|[nN]/) { say "Leaving."; exit(0)     }
+               when (/[yY]/)    { say "Overwriting..."; break }
+
+               default {
+                    say "Unexpected answer. Aborting.";
+                    exit(1);
+               }
+          }
+     }
+     ## end
+
+     `tar -czf $target $source 2>/dev/null`;
+}
 
 sub main {
      my %options;
 
+     # info about the meaning of the arguments can be found at sub help
      GetOptions(\%options,
-                'dir=s',
-                'size=i',
-     ) or die "You're using it wrong baka!";
+                'help',
+                'c',
+                's=s', 'source=s',
+                't=s', 'target=s'
+     ) or do {
+          say "BAKA! You're using it wrong. See --help for instructions.";
+          exit(1);
+     };
 
-     say $options{'dir'}, " ", $options{'size'};
+     &help if (defined $options{'help'});
+
+     # say $options{'c'}, " ", $options{'s'}, " ", $options{'t'};
+
+     &new_bak_file($options{'s'}, $options{'t'}) if ($options{'c'});
 }
 
 &main if (__FILE__ eq $0);
+
+=begin cmnt
+     ## will be used later
+     chomp(my $st = (stat('README.md'))[10]);
+     my @date = localtime($st);
+
+     say $date[3];
+     say $date[4] + 1;
+     say $date[5] + 1900;
+     ##
+=end cmnt
