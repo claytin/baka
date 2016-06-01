@@ -5,6 +5,7 @@ use warnings;
 
 use Getopt::Long qw(:config no_ignore_case bundling); # see perldoc.perl.org
 use File::Basename;
+use File::chdir;
 
 use constant { TMPDIR      => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp"
              , BAKADIR     => "/baka"
@@ -17,7 +18,7 @@ sub help {
 }
 
 # change function name
-sub extract {
+sub extract_tmp {
      my $source = $_[0];
 
      unless (-e $source) {
@@ -46,20 +47,28 @@ sub get_newer_files {
      my @nf;
 }
 
+# recieve two paths (files) and check if they exist in the fs
+# return the correspondent error message, or false otherwise
+sub there_are_files {
+
+     unless (-e "$path$basename$suffix") {
+          return "Couldn't find sorce file. Aborting.";
+     }
+
+     unless (-e $target) {
+          return "Couldn't find target path. Aborting.";
+     }
+
+     return "";
+}
+
 # creates a new backup (target) file for source dir
-sub new_bak_file {
+sub new_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
      my $target = $_[1];
 
-     say "$path$basename$suffix";
-     ## check files
-     unless (-e "$path$basename$suffix") {
-          say "Could'nt find sorce file. Aborting.";
-          exit(1);
-     }
-
-     if (-e $target) {
-          print "Bak file already exists, overwrite it? [y/N]: ";
+     if (-e "$target/$basename${\BAKA_SUFFIX}") {
+          print "Baka, file already exists. Overwrite it? [y/N]: ";
           chomp(my $ans = <STDIN>);
 
           given ($ans) {
@@ -72,21 +81,27 @@ sub new_bak_file {
                }
           }
      }
-     ## end
 
-     my $CWD = $path;
-     `tar -cpzf $target/$basename${\BAKA_SUFFIX} $basename$suffix 2>/dev/null`;
+     local $CWD = $path; # changing current work dir to the source path
+
+     `tar -cpzf $target/$basename${\BAKA_SUFFIX} $basename$suffix`;
+}
+
+sub update_baka_file {
+     &extract_tmp($options{s});
+}
+
+sub baka_baka_file {
 }
 
 sub main {
      my %options;
 
      # info about the meaning of the arguments can be found at sub help
-     GetOptions(\%options,
-                'help',
-                'c', 'b',
-                's=s', 'source=s',
-                't=s', 'target=s'
+     GetOptions( \%options
+               , 'help'
+               , 'n', 'b', 'u'
+               , 's=s', 't=s'
      ) or do {
           say "BAKA! You're using it wrong. See --help for instructions.";
           exit(1);
@@ -94,12 +109,16 @@ sub main {
 
      &help if (defined $options{'help'});
 
-     if (defined $options{c}) {
-          &new_bak_file($options{'s'}, $options{'t'});
+     if (defined $options{n}) {
+          &new_baka_file($options{'s'}, $options{'t'});
      }
 
      if (defined $options{b}) {
-          &extract($options{s});
+          &update_baka_file($options{'s'}, $options{'t'});
+     }
+
+     if (defined $options{u}) {
+          &new_baka_file($options{'s'}, $options{'t'});
      }
 }
 
