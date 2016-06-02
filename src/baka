@@ -44,28 +44,46 @@ sub extract_tmp {
 # recieves target path, and head of the tmp path
 # returns a list of the newer files in the tmp path
 sub get_newer_files {
-     my @nf;
+     my ($tmp, $target) = @_;
+
+     # for each file in tmp get its date and time
+     # compare with the correspondent file in target
+     # return a list of the newer files in tmp
+     #
+     # ls
+     # awk returns filename with suffix, date, time
+     # filter directories
+     # same for target
+     # compare lists
+     # save only the newer files from tmp
+     return 0;
 }
 
 # recieve two paths (files) and check if they exist in the fs
 # return the correspondent error message, or false otherwise
 sub there_are_files {
+     my ($source, $target) = @_;
 
-     unless (-e "$path$basename$suffix") {
-          return "Couldn't find sorce file. Aborting.";
+     unless (-e $source) {
+          return "Couldn't find source. Aborting.";
      }
 
-     unless (-e $target) {
-          return "Couldn't find target path. Aborting.";
+     unless (-d $target) {
+          return "Couldn't find target. Aborting.";
      }
 
-     return "";
+     return ""; # empty string will be seen as a boolean false value
 }
 
 # creates a new backup (target) file for source dir
 sub new_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
      my $target = $_[1];
+
+     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+          say $err;
+          exit(1);
+     }
 
      if (-e "$target/$basename${\BAKA_SUFFIX}") {
           print "Baka, file already exists. Overwrite it? [y/N]: ";
@@ -88,10 +106,22 @@ sub new_baka_file {
 }
 
 sub update_baka_file {
-     &extract_tmp($options{s});
+     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
+     my $target = $_[1];
 }
+     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+          say $err;
+          exit(1);
+     }
 
 sub baka_baka_file {
+     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
+     my $target = $_[1];
+
+     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+          say $err;
+          exit(1);
+     }
 }
 
 sub main {
@@ -118,7 +148,7 @@ sub main {
      }
 
      if (defined $options{u}) {
-          &new_baka_file($options{'s'}, $options{'t'});
+          &baka_baka_file($options{'s'}, $options{'t'});
      }
 }
 
