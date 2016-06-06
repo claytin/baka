@@ -6,4 +6,5 @@ all:
  - check if targets are directories
 
 doc:
- - add dependencies
+ - add dependencies:
+   [perl modules, zsh]
