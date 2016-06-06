@@ -44,7 +44,7 @@ sub extract_tmp {
 # recieves target path, and head of the tmp path
 # returns a list of the newer files in the tmp path
 sub get_newer_files {
-     my ($tmp, $target) = @_;
+     # my ($tmp, $target) = @_;
 
      # for each file in tmp get its date and time
      # compare with the correspondent file in target
@@ -56,6 +56,26 @@ sub get_newer_files {
      # same for target
      # compare lists
      # save only the newer files from tmp
+     #
+
+     my @tfiles = split /\n/, `/bin/zsh -c \'\\
+          LC_COLLATE=C ls -pdRA ${\TMPDIR}${\BAKADIR}/**/*\\
+          | grep -P "[^:/]\$\"
+     \'`;
+
+     for my $tfile (@tfiles) {
+          say $tfile;
+     }
+
+     my @sfiles = split /\n/, `/bin/zsh -c \'\\
+          LC_COLLATE=C ls -pdRA ${\TMPDIR}${\BAKADIR}/**/*\\
+          | grep -P "[^:/]\$\"
+     \'`;
+
+     for my $sfile (@sfiles) {
+          say $sfile;
+     }
+
      return 0;
 }
 
@@ -108,11 +128,12 @@ sub new_baka_file {
 sub update_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
      my $target = $_[1];
-}
+
      if (my $err = &there_are_files("$path$basename$suffix", $target)) {
           say $err;
           exit(1);
      }
+}
 
 sub baka_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
@@ -137,6 +158,8 @@ sub main {
           exit(1);
      };
 
+     # &get_newer_files();
+
      &help if (defined $options{'help'});
 
      if (defined $options{n}) {
@@ -144,11 +167,11 @@ sub main {
      }
 
      if (defined $options{b}) {
-          &update_baka_file($options{'s'}, $options{'t'});
+          &extract_tmp($options{'s'}, $options{'t'});
      }
 
      if (defined $options{u}) {
-          &baka_baka_file($options{'s'}, $options{'t'});
+          &get_newer_files();
      }
 }
 
