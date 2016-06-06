@@ -67,15 +67,6 @@ sub get_newer_files {
           say $tfile;
      }
 
-     my @sfiles = split /\n/, `/bin/zsh -c \'\\
-          LC_COLLATE=C ls -pdRA ${\TMPDIR}${\BAKADIR}/**/*\\
-          | grep -P "[^:/]\$\"
-     \'`;
-
-     for my $sfile (@sfiles) {
-          say $sfile;
-     }
-
      return 0;
 }
 
