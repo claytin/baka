@@ -3,7 +3,7 @@
 use 5.020;
 use warnings;
 
-use Getopt::Long qw(:config no_ignore_case bundling); # see perldoc.perl.org
+use Getopt::Long qw(:config no_ignore_case bundling); # see perldoc
 use File::Basename;
 use File::chdir;
 
@@ -41,10 +41,33 @@ sub extract_tmp {
      `tar -xpzf $source -C ${\TMPDIR}${\BAKADIR}`;
 }
 
+# recieves a path string, and returns a list indexed by the files full name
+# of their stat (date and time)
+sub file_stat {
+     my $path = $_[0];
+
+     my %stat; # 0 => date, 1 => time
+
+     for my $file (split /\n/, `/bin/zsh -c \'ls -pdRA $path/**/* |\\
+                               grep -P "[^:/]\$"\'`) {
+
+          my ($min, $hour, $day, $mon, $year) = (localtime(
+               (stat($file))[9]
+          ))[1 .. 5]; # time and date derived from the files mtime
+
+          $year += 1900; # "fix" the date format, see perldoc localtime
+          $mon  += 1;    # it may not be necessary, but for now it stays
+
+          $stat{$file} = ["$year-$mon-$day", "$hour:$min"];
+     }
+
+     return %stat;
+}
+
 # recieves target path, and head of the tmp path
 # returns a list of the newer files in the tmp path
 sub get_newer_files {
-     # my ($tmp, $target) = @_;
+     my ($tmp, $target) = @_;
 
      # for each file in tmp get its date and time
      # compare with the correspondent file in target
@@ -58,13 +81,11 @@ sub get_newer_files {
      # save only the newer files from tmp
      #
 
-     my @tfiles = split /\n/, `/bin/zsh -c \'\\
-          LC_COLLATE=C ls -pdRA ${\TMPDIR}${\BAKADIR}/**/*\\
-          | grep -P "[^:/]\$\"
-     \'`;
+     my %tmp_stat = &file_stat($tmp);
+     # my %fs_stat  = &file_stat($target);
 
-     for my $tfile (@tfiles) {
-          say $tfile;
+     for my $file (keys %tmp_stat) { # debug
+          say "$tmp_stat{$file}[0] $tmp_stat{$file}[1] $file";
      }
 
      return 0;
@@ -162,7 +183,7 @@ sub main {
      }
 
      if (defined $options{u}) {
-          &get_newer_files();
+          &get_newer_files("${\TMPDIR}${\BAKADIR}");
      }
 }
 
@@ -170,8 +191,6 @@ sub main {
 
 =begin cmnt
      ## will be used later
-     chomp(my $st = (stat('README.md'))[10]);
-     my @date = localtime($st);
 
      say $date[3];
      say $date[4] + 1;
