@@ -58,37 +58,38 @@ sub file_stat {
           $year += 1900; # "fix" the date format, see perldoc localtime
           $mon  += 1;    # it may not be necessary, but for now it stays
 
-          $stat{$file} = ["$year-$mon-$day", "$hour:$min"];
+          $stat{basename($file)} = ["$year-$mon-$day", "$hour:$min", $file];
      }
 
      return %stat;
 }
 
-# recieves target path, and head of the tmp path
 # returns a list of the newer files in the tmp path
 sub get_newer_files {
-     my ($tmp, $target) = @_;
+     my ($source, $target) = @_;
 
-     # for each file in tmp get its date and time
-     # compare with the correspondent file in target
-     # return a list of the newer files in tmp
-     #
-     # ls
-     # awk returns filename with suffix, date, time
-     # filter directories
-     # same for target
-     # compare lists
-     # save only the newer files from tmp
-     #
+     my %src_stat = &file_stat($source);
+     my %tgt_stat = &file_stat($target);
 
-     my %tmp_stat = &file_stat($tmp);
-     # my %fs_stat  = &file_stat($target);
+     my @nf; # newer files
 
-     for my $file (keys %tmp_stat) { # debug
-          say "$tmp_stat{$file}[0] $tmp_stat{$file}[1] $file";
+     for my $file (keys %src_stat) {
+          # mudar condicional?
+          #
+          if (! defined $tgt_stat{$file}) { # file don't exist in the fs
+               push @nf, $src_stat{$file}[2];
+          } elsif ($src_stat{$file}[0] gt $tgt_stat{$file}[0]) { # newer date
+               push @nf, $src_stat{$file}[2];
+          } elsif ($src_stat{$file}[0] eq $tgt_stat{$file}[0]) { # same date
+               if ($src_stat{$file}[1] gt $tgt_stat{$file}[1]) { # newer time
+                    push @nf, $src_stat{$file}[2];
+               }
+          }
      }
 
-     return 0;
+     # for my $file(@nf) { say $file; }
+
+     return @nf;
 }
 
 # recieve two paths (files) and check if they exist in the fs
@@ -158,10 +159,10 @@ sub baka_baka_file {
 }
 
 sub main {
-     my %options;
+     my %option;
 
      # info about the meaning of the arguments can be found at sub help
-     GetOptions( \%options
+     GetOptions( \%option
                , 'help'
                , 'n', 'b', 'u'
                , 's=s', 't=s'
@@ -172,18 +173,19 @@ sub main {
 
      # &get_newer_files();
 
-     &help if (defined $options{'help'});
+     &help if (defined $option{help});
 
-     if (defined $options{n}) {
-          &new_baka_file($options{'s'}, $options{'t'});
+     if (defined $option{n}) {
+          &new_baka_file($option{s}, $option{t});
      }
 
-     if (defined $options{b}) {
-          &extract_tmp($options{'s'}, $options{'t'});
+     if (defined $option{b}) {
+          &extract_tmp($option{s}, $option{t}); # arguments are wrong
      }
 
-     if (defined $options{u}) {
-          &get_newer_files("${\TMPDIR}${\BAKADIR}");
+     if (defined $option{u}) {
+          # &get_newer_files("${\TMPDIR}${\BAKADIR}", $option{t});
+          &get_newer_files($option{t}, "${\TMPDIR}${\BAKADIR}");
      }
 }
 
