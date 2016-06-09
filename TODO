@@ -1,9 +1,6 @@
 all:
- - move file checking for a sub
- - compress only with basename
- - grant full path names
+ - grant full path names?
  - check for incompatible flags
- - check if targets are directories
 
 doc:
  - add dependencies:
