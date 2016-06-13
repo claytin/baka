@@ -1,6 +1,8 @@
 all:
  - grant full path names?
  - check for incompatible flags
+ - manage changes on the files tree structure
+ - change nomenclature; it's to fuzzy right now
 
 doc:
  - add dependencies:
