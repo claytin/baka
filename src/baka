@@ -18,7 +18,7 @@ sub help {
 }
 
 # change function name
-sub extract_tmp {
+sub make_tmp {
      my $source = $_[0];
 
      unless (-e $source) {
@@ -39,14 +39,17 @@ sub extract_tmp {
      }
 
      `tar -xpzf $source -C ${\TMPDIR}${\BAKADIR}`;
+
+     # debug
+     say "make_tmp => ok"
 }
 
-# recieves a path string, and returns a list indexed by the files full name
-# of their stat (date and time)
+# recieves a path string, and returns a list (hash), indexed by the files base
+# name, of their stat (date, time, absolute name)
 sub file_stat {
      my $path = $_[0];
 
-     my %stat; # 0 => date, 1 => time
+     my %stat;
 
      for my $file (split /\n/, `/bin/zsh -c \'ls -pdRA $path/**/* |\\
                                grep -P "[^:/]\$"\'`) {
@@ -55,7 +58,7 @@ sub file_stat {
                (stat($file))[9]
           ))[1 .. 5]; # time and date derived from the files mtime
 
-          $year += 1900; # "fix" the date format, see perldoc localtime
+          $year += 1900; # "fix" the date format, see perldoc localtime,
           $mon  += 1;    # it may not be necessary, but for now it stays
 
           $stat{basename($file)} = ["$year-$mon-$day", "$hour:$min", $file];
@@ -64,8 +67,8 @@ sub file_stat {
      return %stat;
 }
 
-# returns a list of the newer files in the tmp path
-sub get_newer_files {
+# returns a list of the newer files in the source when compared to target
+sub newer_files {
      my ($source, $target) = @_;
 
      my %src_stat = &file_stat($source);
@@ -74,20 +77,16 @@ sub get_newer_files {
      my @nf; # newer files
 
      for my $file (keys %src_stat) {
-          # mudar condicional?
-          #
-          if (! defined $tgt_stat{$file}) { # file don't exist in the fs
-               push @nf, $src_stat{$file}[2];
-          } elsif ($src_stat{$file}[0] gt $tgt_stat{$file}[0]) { # newer date
-               push @nf, $src_stat{$file}[2];
-          } elsif ($src_stat{$file}[0] eq $tgt_stat{$file}[0]) { # same date
-               if ($src_stat{$file}[1] gt $tgt_stat{$file}[1]) { # newer time
-                    push @nf, $src_stat{$file}[2];
+          if (defined $tgt_stat{$file}) {
+               next if ($src_stat{$file}[0] lt $tgt_stat{$file}[0]); # older
+
+               if ($src_stat{$file}[0] eq $tgt_stat{$file}[0]) {
+                    next if ($src_stat{$file}[1] le $tgt_stat{$file}[1]);
                }
           }
-     }
 
-     # for my $file(@nf) { say $file; }
+          push @nf, $src_stat{$file}[2];
+     }
 
      return @nf;
 }
@@ -138,16 +137,6 @@ sub new_baka_file {
      `tar -cpzf $target/$basename${\BAKA_SUFFIX} $basename$suffix`;
 }
 
-sub update_baka_file {
-     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
-     my $target = $_[1];
-
-     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
-          say $err;
-          exit(1);
-     }
-}
-
 sub baka_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
      my $target = $_[1];
@@ -156,6 +145,18 @@ sub baka_baka_file {
           say $err;
           exit(1);
      }
+
+     # debug
+     say "$target will be updated.";
+
+     &make_tmp("$path$basename$suffix");
+
+     my @to_baka = &newer_files("${\TMPDIR}${\BAKADIR}/$basename", $target);
+
+     # debug
+     for my $file (@to_baka) { say $file; }
+
+     for my $file (@to_baka) { say $file; }
 }
 
 sub main {
@@ -171,8 +172,6 @@ sub main {
           exit(1);
      };
 
-     # &get_newer_files();
-
      &help if (defined $option{help});
 
      if (defined $option{n}) {
@@ -180,7 +179,7 @@ sub main {
      }
 
      if (defined $option{b}) {
-          &extract_tmp($option{s}, $option{t}); # arguments are wrong
+          &baka_baka_file($option{s}, $option{t});
      }
 
      if (defined $option{u}) {
@@ -190,12 +189,3 @@ sub main {
 }
 
 &main if (__FILE__ eq $0);
-
-=begin cmnt
-     ## will be used later
-
-     say $date[3];
-     say $date[4] + 1;
-     say $date[5] + 1900;
-     ##
-=end cmnt
