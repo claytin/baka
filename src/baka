@@ -41,7 +41,7 @@ sub make_tmp {
      `tar -xpzf $source -C ${\TMPDIR}${\BAKADIR}`;
 
      # debug
-     say "make_tmp => ok"
+     say "ok! make_tmp";
 }
 
 # recieves a path string, and returns a list (hash), indexed by the files base
@@ -85,7 +85,7 @@ sub newer_files {
                }
           }
 
-          push @nf, $src_stat{$file}[2];
+          push @nf, $src_stat{$file}[2]
      }
 
      return @nf;
@@ -153,10 +153,16 @@ sub baka_baka_file {
 
      my @to_baka = &newer_files("${\TMPDIR}${\BAKADIR}/$basename", $target);
 
-     # debug
-     for my $file (@to_baka) { say $file; }
+     # copy
+     for my $file (@to_baka) {
+          my $cmd = "cp -f $file ";
 
-     for my $file (@to_baka) { say $file; }
+          $file =~ s/\Q${\TMPDIR}${\BAKADIR}\/$basename\E//g;
+
+          $cmd .= $target . $file;
+
+          `$cmd`;
+     }
 }
 
 sub main {
