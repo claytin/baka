@@ -11,6 +11,7 @@ use constant { TMPDIR      => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp"
              , BAKADIR     => "/baka"
              , BAKA_SUFFIX => ".baka" };
 
+# print summary of functionalities, and how to use them
 sub help {
      say "We will get there.";
 
@@ -39,9 +40,6 @@ sub make_tmp {
      }
 
      `tar -xpzf $source -C ${\TMPDIR}${\BAKADIR}`;
-
-     # debug
-     say "ok! make_tmp";
 }
 
 # recieves a path string, and returns a list (hash), indexed by the files base
@@ -58,7 +56,7 @@ sub file_stat {
                (stat($file))[9]
           ))[1 .. 5]; # time and date derived from the files mtime
 
-          # grants that lexicografical comparitions are done right
+          # grants that lexicografical comparisons are done right
           $min  = sprintf("%02d", $min);
           $hour = sprintf("%02d", $hour);
           $day  = sprintf("%02d", $day);
@@ -74,26 +72,17 @@ sub file_stat {
 sub newer_files {
      my ($source, $target) = @_;
 
-     # say "soruce: $source";
-     # say "target: $target";
-
      my %src_stat = &file_stat($source);
      my %tgt_stat = &file_stat($target);
 
-     # for my $file (keys %src_stat) { say $file }
-     # say "";
-     # for my $file (keys %tgt_stat) { say $file }
      my @nf; # newer files
 
      # say "";
      for my $file (keys %src_stat) {
           if (defined $tgt_stat{$file}) {
-               # say $src_stat{$file}[0], " ", $src_stat{$file}[1];
-               # say $tgt_stat{$file}[0], " ", $tgt_stat{$file}[1];
-
                next if ($src_stat{$file}[0] lt $tgt_stat{$file}[0]); # older
 
-               # if they have the same, check the time
+               # if they have the same date then check the time
                if ($src_stat{$file}[0] eq $tgt_stat{$file}[0]) {
                     next if ($src_stat{$file}[1] le $tgt_stat{$file}[1]);
                }
@@ -121,7 +110,7 @@ sub there_are_files {
      return ""; # empty string will be seen as a boolean false value
 }
 
-# creates a new backup (target) file for source dir
+# creates a new backup (target) file of source dir ($_[0])
 sub new_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
      my $target = $_[1];
@@ -151,6 +140,7 @@ sub new_baka_file {
      `tar -cpzf $target/$basename${\BAKA_SUFFIX} $basename$suffix`;
 }
 
+# sync from a .baka ($_[0]) file to the fs (target)
 sub baka_baka_file {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX); # .baka
      my $target = $_[1]; # dir
@@ -159,9 +149,6 @@ sub baka_baka_file {
           say $err;
           exit(1);
      }
-
-     # debug
-     # say "$target will be updated.";
 
      &make_tmp("$path$basename$suffix");
 
@@ -179,6 +166,8 @@ sub baka_baka_file {
      }
 }
 
+# sync from the fs ($_[0]) to a baka file in target
+# uses new_baka_file to do so
 sub sync_baka_fyle {
      my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX); # dir
      my $target = $_[1]; # dir
@@ -188,16 +177,10 @@ sub sync_baka_fyle {
           exit(1);
      }
 
-     # debug
-     # say "$target will be updated.";
-
      &make_tmp("$target/$basename${\BAKA_SUFFIX}");
 
      my @to_baka = &newer_files("$path$basename$suffix",
                                 "${\TMPDIR}${\BAKADIR}/$basename");
-
-     # debug
-     say $#to_baka;
 
      # copy
      for my $file (@to_baka) {
@@ -207,9 +190,10 @@ sub sync_baka_fyle {
 
           $cmd .= "${\TMPDIR}${\BAKADIR}/$basename" . $file;
 
-          say $cmd;
-          # `$cmd`;
+          `$cmd`;
      }
+
+     &new_baka_file("${\TMPDIR}${\BAKADIR}/$basename", $target);
 }
 
 sub main {
@@ -236,8 +220,6 @@ sub main {
      }
 
      if (defined $option{u}) {
-          # &get_newer_files("${\TMPDIR}${\BAKADIR}", $option{t});
-          # &get_newer_files($option{t}, "${\TMPDIR}${\BAKADIR}");
           &sync_baka_fyle($option{s}, $option{t});
      }
 }
