@@ -58,8 +58,11 @@ sub file_stat {
                (stat($file))[9]
           ))[1 .. 5]; # time and date derived from the files mtime
 
-          $year += 1900; # "fix" the date format, see perldoc localtime,
-          $mon  += 1;    # it may not be necessary, but for now it stays
+          # grants that lexicografical comparitions are done right
+          $min  = sprintf("%02d", $min);
+          $hour = sprintf("%02d", $hour);
+          $day  = sprintf("%02d", $day);
+          $mon  = sprintf("%02d", $mon);
 
           $stat{basename($file)} = ["$year-$mon-$day", "$hour:$min", $file];
      }
@@ -71,15 +74,26 @@ sub file_stat {
 sub newer_files {
      my ($source, $target) = @_;
 
+     # say "soruce: $source";
+     # say "target: $target";
+
      my %src_stat = &file_stat($source);
      my %tgt_stat = &file_stat($target);
 
+     # for my $file (keys %src_stat) { say $file }
+     # say "";
+     # for my $file (keys %tgt_stat) { say $file }
      my @nf; # newer files
 
+     # say "";
      for my $file (keys %src_stat) {
           if (defined $tgt_stat{$file}) {
+               # say $src_stat{$file}[0], " ", $src_stat{$file}[1];
+               # say $tgt_stat{$file}[0], " ", $tgt_stat{$file}[1];
+
                next if ($src_stat{$file}[0] lt $tgt_stat{$file}[0]); # older
 
+               # if they have the same, check the time
                if ($src_stat{$file}[0] eq $tgt_stat{$file}[0]) {
                     next if ($src_stat{$file}[1] le $tgt_stat{$file}[1]);
                }
@@ -138,8 +152,8 @@ sub new_baka_file {
 }
 
 sub baka_baka_file {
-     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
-     my $target = $_[1];
+     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX); # .baka
+     my $target = $_[1]; # dir
 
      if (my $err = &there_are_files("$path$basename$suffix", $target)) {
           say $err;
@@ -147,7 +161,7 @@ sub baka_baka_file {
      }
 
      # debug
-     say "$target will be updated.";
+     # say "$target will be updated.";
 
      &make_tmp("$path$basename$suffix");
 
@@ -162,6 +176,39 @@ sub baka_baka_file {
           $cmd .= $target . $file;
 
           `$cmd`;
+     }
+}
+
+sub sync_baka_fyle {
+     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX); # dir
+     my $target = $_[1]; # dir
+
+     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+          say $err;
+          exit(1);
+     }
+
+     # debug
+     # say "$target will be updated.";
+
+     &make_tmp("$target/$basename${\BAKA_SUFFIX}");
+
+     my @to_baka = &newer_files("$path$basename$suffix",
+                                "${\TMPDIR}${\BAKADIR}/$basename");
+
+     # debug
+     say $#to_baka;
+
+     # copy
+     for my $file (@to_baka) {
+          my $cmd = "cp -f $file ";
+
+          $file =~ s/\Q$path$basename\E//g;
+
+          $cmd .= "${\TMPDIR}${\BAKADIR}/$basename" . $file;
+
+          say $cmd;
+          # `$cmd`;
      }
 }
 
@@ -190,7 +237,8 @@ sub main {
 
      if (defined $option{u}) {
           # &get_newer_files("${\TMPDIR}${\BAKADIR}", $option{t});
-          &get_newer_files($option{t}, "${\TMPDIR}${\BAKADIR}");
+          # &get_newer_files($option{t}, "${\TMPDIR}${\BAKADIR}");
+          &sync_baka_fyle($option{s}, $option{t});
      }
 }
 
