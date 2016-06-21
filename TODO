@@ -1,6 +1,4 @@
 all:
- - add logs
- - check for incompatible flags
  - manage changes on the files tree structure
  - change nomenclature; it's to fuzzy right now
 
