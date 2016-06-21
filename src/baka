@@ -7,6 +7,8 @@ use Getopt::Long qw(:config no_ignore_case bundling); # see perldoc
 use File::Basename;
 use File::chdir;
 
+use BakaTree;
+
 use constant { TMPDIR      => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp"
              , BAKADIR     => "/baka"
              , BAKA_SUFFIX => ".baka" };
