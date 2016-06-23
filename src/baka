@@ -54,9 +54,10 @@ sub file_stat {
      for my $file (split /\n/, `/bin/zsh -c \'ls -pdRA $path/**/* |\\
                                grep -P "[^:/]\$"\'`) {
 
+          # time and date derived from the files mtime
           my ($min, $hour, $day, $mon, $year) = (localtime(
                (stat($file))[9]
-          ))[1 .. 5]; # time and date derived from the files mtime
+          ))[1 .. 5];
 
           # grants that lexicografical comparisons are done right
           $min  = sprintf("%02d", $min);
@@ -210,6 +211,8 @@ sub main {
           say "BAKA! You're using it wrong. See --help for instructions.";
           exit(1);
      };
+
+     baka_tree($CWD);
 
      &help if (defined $option{help});
 
