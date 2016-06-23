@@ -212,7 +212,7 @@ sub main {
           exit(1);
      };
 
-     baka_tree($CWD);
+     baka_tree("/home/wilhelm/try");
 
      &help if (defined $option{help});
 
