@@ -21,13 +21,15 @@ our @EXPORT_OK = ();
 sub baka_tree {
      my ($basename, $path) = fileparse($_[0]);
 
-     local $CWD = "$path"; # go to path
+     my %root = ( name => $basename, type => DIR, child => [] );
 
-     my @bt;
-     $bt[0] = [{ name => $basename, type => DIR }];
+     local $CWD = "$path$basename"; # go to path
 
-     say "$bt[0][0]{name} $bt[0][0]{type}";
-     say `ls`;
+     for my $node (split /\n/, `ls`) {
+          push $root{child}, $node;
+     }
+
+     say $root{child}[0];
 }
 
 1; # end
