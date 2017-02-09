@@ -1,7 +1,2 @@
 all:
  - manage changes on the files tree structure
- - change nomenclature; it's to fuzzy right now
-
-doc:
- - add dependencies:
-   [perl modules, zsh]
