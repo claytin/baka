@@ -18,20 +18,16 @@ sub help {
      exit(0);
 }
 
-# change function name
-sub make_tmp {
+# recieves the source baka file path, check if its a valid baka file, and
+# creates a tmp dir containing the files from the .baka
+sub make_tmp_dir {
      my $source = $_[0];
-
-     unless (-e $source) {
-          say "Could'nt find sorce file. Aborting.";
-          exit(1);
-     }
 
      chomp(my $valid_baka = `tar -tf $source 2>/dev/null | wc -l`);
 
      if (! $valid_baka) { # check if source is a valid tar.gz archive, and if
                           # there are any content in it
-          say "File '$valid_baka' is not a valid baka file. Aborting.";
+          say "File '$valid_baka' is not a valid baka file. Aborting!";
           exit(1);
      }
 
@@ -78,7 +74,6 @@ sub newer_files {
 
      my @nf; # newer files
 
-     # say "";
      for my $file (keys %src_stat) {
           if (defined $tgt_stat{$file}) {
                next if ($src_stat{$file}[0] lt $tgt_stat{$file}[0]); # older
@@ -101,11 +96,11 @@ sub there_are_files {
      my ($source, $target) = @_;
 
      unless (-e $source) {
-          return "Couldn't find source. Aborting.";
+          return "Couldn't find source. Aborting!";
      }
 
-     unless (-d $target) {
-          return "Couldn't find target. Aborting.";
+     unless (-d $target) { # target will aways be a dir
+          return "Couldn't find target. Aborting!";
      }
 
      return ""; # empty string will be seen as a boolean false value
@@ -125,14 +120,11 @@ sub new_baka_file {
           print "Baka, file already exists. Overwrite it? [y/N]: ";
           chomp(my $ans = <STDIN>);
 
-          given ($ans) {
-               when (/^$|[Nn]/) { say "Leaving."; exit(0)     }
-               when (/[Yy]/)    { say "Overwriting..."; break }
+          for ($ans) { # not really a loop; substitutes given/when
+               if (/^$|[Nn]/) { say "Leaving."; exit(0)     }
+               if (/[Yy]/)    { say "Overwriting..."; last }
 
-               default {
-                    say "Unexpected answer. Aborting.";
-                    exit(1);
-               }
+               say "Unexpected answer. Aborting!"; exit(1)
           }
      }
 
@@ -143,15 +135,18 @@ sub new_baka_file {
 
 # sync from a .baka ($_[0]) file to the fs (target)
 sub write_baka_file {
-     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX); # .baka
+     my $source = $_[0]; # .baka file
      my $target = $_[1]; # dir
 
-     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+     if (my $err = &there_are_files($source, $target)) {
           say $err;
           exit(1);
      }
 
-     &make_tmp("$path$basename$suffix");
+     &make_tmp_dir($source);
+
+     # spliting source file path
+     my ($basename, $path, $suffix) = fileparse($source, BAKA_SUFFIX);
 
      my @to_baka = &newer_files("${\TMPDIR}${\BAKADIR}/$basename", $target);
 
@@ -170,18 +165,19 @@ sub write_baka_file {
 # sync from the fs ($_[0]) to a baka file in target
 # uses new_baka_file to do so
 sub sync_baka_fyle {
-     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX); # dir
+     my $source = $_[0]; # dir to be backed up
      my $target = $_[1]; # dir
 
-     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+     if (my $err = &there_are_files($source, $target)) {
           say $err;
           exit(1);
      }
 
-     &make_tmp("$target/$basename${\BAKA_SUFFIX}");
+     my ($basename, $path, $suffix) = fileparse($source, BAKA_SUFFIX);
 
-     my @to_baka = &newer_files("$path$basename$suffix",
-                                "${\TMPDIR}${\BAKADIR}/$basename");
+     &make_tmp_dir("$target/$basename${\BAKA_SUFFIX}");
+
+     my @to_baka = &newer_files($source, "${\TMPDIR}${\BAKADIR}/$basename");
 
      # copy
      for my $file (@to_baka) {
