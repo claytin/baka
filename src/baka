@@ -1,0 +1,228 @@
+#!/usr/bin/env perl
+
+use 5.020;
+use warnings;
+
+use Getopt::Long qw(:config no_ignore_case bundling); # see perldoc
+use File::Basename;
+use File::chdir;
+
+use constant { TMPDIR      => defined $ENV{TMPDIR}? $ENV{TMPDIR} : "/tmp"
+             , BAKADIR     => "/baka"
+             , BAKA_SUFFIX => ".baka" };
+
+# print summary of functionalities, and how to use them
+sub help {
+     say "We will get there.";
+
+     exit(0);
+}
+
+# recieves the source baka file path, check if its a valid baka file, and
+# creates a tmp dir containing the files from the .baka
+sub make_tmp_dir {
+     my $source = $_[0];
+
+     chomp(my $valid_baka = `tar -tf $source 2>/dev/null | wc -l`);
+
+     if (! $valid_baka) { # check if source is a valid tar.gz archive, and if
+                          # there are any content in it
+          say "File '$valid_baka' is not a valid baka file. Aborting!";
+          exit(1);
+     }
+
+     unless (-e "${\TMPDIR}${\BAKADIR}") { # baka dir doesn't exist
+          `mkdir ${\TMPDIR}${\BAKADIR}`;
+     }
+
+     `tar -xpzf $source -C ${\TMPDIR}${\BAKADIR}`;
+}
+
+# recieves a path string, and returns a list (hash), indexed by the files base
+# name, of their stat (date, time, absolute name)
+sub file_stat {
+     my $path = $_[0];
+
+     my %stat;
+
+     for my $file (split /\n/, `/bin/zsh -c \'ls -pdRA $path/**/* |\\
+                               grep -P "[^:/]\$"\'`) {
+
+          # time and date derived from the files mtime
+          my ($min, $hour, $day, $mon, $year) = (localtime(
+               (stat($file))[9]
+          ))[1 .. 5];
+
+          # grants that lexicografical comparisons are done right
+          $min  = sprintf("%02d", $min);
+          $hour = sprintf("%02d", $hour);
+          $day  = sprintf("%02d", $day);
+          $mon  = sprintf("%02d", $mon);
+
+          $stat{basename($file)} = ["$year-$mon-$day", "$hour:$min", $file];
+     }
+
+     return %stat;
+}
+
+# returns a list of the newer files in the source when compared to target
+sub newer_files {
+     my ($source, $target) = @_;
+
+     my %src_stat = &file_stat($source);
+     my %tgt_stat = &file_stat($target);
+
+     my @nf; # newer files
+
+     for my $file (keys %src_stat) {
+          if (defined $tgt_stat{$file}) {
+               next if ($src_stat{$file}[0] lt $tgt_stat{$file}[0]); # older
+
+               # if they have the same date then check the time
+               if ($src_stat{$file}[0] eq $tgt_stat{$file}[0]) {
+                    next if ($src_stat{$file}[1] le $tgt_stat{$file}[1]);
+               }
+          }
+
+          push @nf, $src_stat{$file}[2]
+     }
+
+     return @nf;
+}
+
+# recieve two paths (files) and check if they exist in the fs
+# return the correspondent error message, or false otherwise
+sub there_are_files {
+     my ($source, $target) = @_;
+
+     unless (-e $source) {
+          return "Couldn't find source. Aborting!";
+     }
+
+     unless (-d $target) { # target will aways be a dir
+          return "Couldn't find target. Aborting!";
+     }
+
+     return ""; # empty string will be seen as a boolean false value
+}
+
+# creates a new backup (target) file of source dir ($_[0])
+sub new_baka_file {
+     my ($basename, $path, $suffix) = fileparse($_[0], BAKA_SUFFIX);
+     my $target = $_[1];
+
+     if (my $err = &there_are_files("$path$basename$suffix", $target)) {
+          say $err;
+          exit(1);
+     }
+
+     if (-e "$target/$basename${\BAKA_SUFFIX}") {
+          print "Baka, file already exists. Overwrite it? [y/N]: ";
+          chomp(my $ans = <STDIN>);
+
+          for ($ans) { # not really a loop; substitutes given/when
+               if (/^$|[Nn]/) { say "Leaving."; exit(0)     }
+               if (/[Yy]/)    { say "Overwriting..."; last }
+
+               say "Unexpected answer. Aborting!"; exit(1)
+          }
+     }
+
+     local $CWD = $path; # changing current work dir to the source path
+
+     `tar -cpzf $target/$basename${\BAKA_SUFFIX} $basename$suffix`;
+}
+
+# sync from a .baka ($_[0]) file to the fs (target)
+sub write_baka_file {
+     my $source = $_[0]; # .baka file
+     my $target = $_[1]; # dir
+
+     if (my $err = &there_are_files($source, $target)) {
+          say $err;
+          exit(1);
+     }
+
+     &make_tmp_dir($source);
+
+     # spliting source file path
+     my ($basename, $path, $suffix) = fileparse($source, BAKA_SUFFIX);
+
+     my @to_baka = &newer_files("${\TMPDIR}${\BAKADIR}/$basename", $target);
+
+     # copy
+     for my $file (@to_baka) {
+          my $cmd = "cp -f $file ";
+
+          $file =~ s/\Q${\TMPDIR}${\BAKADIR}\/$basename\E//g;
+
+          $cmd .= $target . $file;
+
+          `$cmd`;
+     }
+}
+
+# sync from the fs ($_[0]) to a baka file in target
+# uses new_baka_file to do so
+sub sync_baka_fyle {
+     my $source = $_[0]; # dir to be backed up
+     my $target = $_[1]; # dir
+
+     if (my $err = &there_are_files($source, $target)) {
+          say $err;
+          exit(1);
+     }
+
+     my ($basename, $path, $suffix) = fileparse($source, BAKA_SUFFIX);
+
+     &make_tmp_dir("$target/$basename${\BAKA_SUFFIX}");
+
+     my @to_baka = &newer_files($source, "${\TMPDIR}${\BAKADIR}/$basename");
+
+     # copy
+     for my $file (@to_baka) {
+          my $cmd = "cp -f $file ";
+
+          $file =~ s/\Q$path$basename\E//g;
+
+          $cmd .= "${\TMPDIR}${\BAKADIR}/$basename" . $file;
+
+          `$cmd`;
+     }
+
+     &new_baka_file("${\TMPDIR}${\BAKADIR}/$basename", $target);
+}
+
+sub main {
+     my %option;
+
+     # n - creates a new baka file
+     # w - write content of the baka file on the fs
+     # u - updates/sync the baka file
+     # s - precedes source file/dir path
+     # t - precedes target file/dir path
+     GetOptions( \%option
+               , 'help'
+               , 'n', 'b', 'u'
+               , 's=s', 't=s'
+     ) or do {
+          say "BAKA! You're using it wrong. See --help for instructions.";
+          exit(1);
+     };
+
+     &help if (defined $option{help});
+
+     if (defined $option{n}) {
+          &new_baka_file($option{s}, $option{t});
+     }
+
+     if (defined $option{w}) {
+          &write_baka_file($option{s}, $option{t});
+     }
+
+     if (defined $option{u}) {
+          &sync_baka_fyle($option{s}, $option{t});
+     }
+}
+
+&main if (__FILE__ eq $0);

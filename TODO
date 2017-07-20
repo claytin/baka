@@ -1,0 +1,7 @@
+all:
+ - improve file checking function; diferent behavior for diferent features
+ - chek root of baka file and warn of inconsistencies
+
+doc:
+ - add dependencies:
+   [perl modules, zsh]
